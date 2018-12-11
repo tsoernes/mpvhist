@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+import datetime
+import hashlib
+import os
+from itertools import chain
+from pathlib import Path
+
+wl_rel_dir = [".config", "mpv", "watch_later"]
+wl_dir = Path.home().joinpath(*wl_rel_dir)
+wl_chksum_to_path = {p.name: p for p in wl_dir.iterdir() if p.is_file()}
+
+# Get both symbolic and dereferenced paths
+cwd1 = Path.cwd()
+cwd2 = Path(os.getenv('PWD'))
+paths = cwd1.iterdir()
+if cwd1 != cwd2:
+    paths = chain(paths, cwd2.iterdir())
+for cwd_p in sorted(list(paths)):
+    if cwd_p.is_file():
+        cwd_p_chk = hashlib.md5(str(cwd_p).encode("UTF-8")).hexdigest()
+        try:
+            wl_path = wl_chksum_to_path[cwd_p_chk.upper()]
+            wl_info = wl_path.read_text().split("\n")[0]
+            assert wl_info[:5] == "start", "is this ever violated? when?"
+            wl_start = round(float(wl_info[6:]))
+            wl_start_str = str(datetime.timedelta(seconds=wl_start))
+            print(f"{cwd_p.name}: {wl_start_str}")
+        except KeyError:
+            # print(f"No WL for {str(cwd_p)} with chk {cwd_p_chk}")
+            pass
